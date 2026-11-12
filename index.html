@@ -79,7 +79,7 @@ const UI=LS.get('jdg-ui')||{};let showJ=UI.showJ!==false,detJ=!!UI.detJ;const sa
 const fixLink=v=>{v=String(v||'').trim();if(!v)return'';if(!/^https?:\/\//i.test(v)){if(/^[a-z][a-z0-9+.-]*:/i.test(v))return'';v='https://'+v}return v.slice(0,500)};
 const linkHTML=l=>{l=fixLink(l);return l?`<a class="chip" href="${esc(l)}" target="_blank" rel="noopener noreferrer">🔗 ссылка</a>`:''};
 let role=null,peer=null,code='',ev=JSON.parse(JSON.stringify(DEF)),scores={},conns=new Map(),status='',conn=null;
-let tab='prog',editId=null,form={team:'',song:'',link:'',cat:''},resetArm=false,draft={},myMarks={},myName=LS.get('jdg-name')||'',myKey=LS.get('jdg-key')||(()=>{const k=uidn()+uidn();LS.set('jdg-key',k);return k})();
+let tab='prog',editId=null,form={team:'',song:'',link:'',cat:''},resetArm=false,draft={},myMarks={},myComments={},draftC={},myName=LS.get('jdg-name')||'',myKey=LS.get('jdg-key')||(()=>{const k=uidn()+uidn();LS.set('jdg-key',k);return k})();
 const PFX='jdg-fest-';
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.remove('hide');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.add('hide'),3500)}
 const newCode=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s};
@@ -118,13 +118,15 @@ function startHost(c,restore){
       if(!m||typeof m!=='object')return;
       if(m.t==='hello'&&typeof m.key==='string'){key=m.key.slice(0,40);conns.set(key,cn);
         const j=scores[key]||(scores[key]={name:'',marks:{}});if(m.name)j.name=String(m.name).slice(0,30);
-        cn.send({t:'ev',ev,marks:j.marks});saveHost();render()}
+        cn.send({t:'ev',ev,marks:j.marks,comments:j.comments||{}});saveHost();render()}
       else if(m.t==='marks'&&key){
         const p=ev.program.find(x=>x.id===m.perfId);
         if(!p||p.done){cn.send({t:'err',m:'Приём оценок по этому номеру закрыт'});return}
         const mk={};for(const c of ev.criteria){const v=parseFloat(m.marks&&m.marks[c.id]);if(!isFinite(v)){cn.send({t:'err',m:'Заполните все критерии'});return}mk[c.id]=Math.min(ev.max,Math.max(0,v))}
         const j=scores[key]||(scores[key]={name:'',marks:{}});if(m.name)j.name=String(m.name).slice(0,30);
-        j.marks[p.id]=mk;cn.send({t:'ack',perfId:p.id});saveHost();render()}
+        j.marks[p.id]=mk;
+        if(typeof m.comment==='string'){j.comments=j.comments||{};const cm=m.comment.trim().slice(0,1000);if(cm)j.comments[p.id]=cm;else delete j.comments[p.id]}
+        cn.send({t:'ack',perfId:p.id});saveHost();render()}
     });
     cn.on('close',()=>{if(key&&conns.get(key)===cn){conns.delete(key);render()}});
   });
@@ -175,8 +177,19 @@ function exportXls(){
   const w1=XLSX.utils.aoa_to_sheet(top);w1['!cols']=[{wch:16},{wch:7},{wch:28},{wch:30},{wch:9}];
   const w2=XLSX.utils.aoa_to_sheet([hdr,...rows]);w2['!cols']=hdr.map((h,k)=>({wch:k===1||k===2?28:k===4?24:Math.max(8,Math.min(22,String(h).length+2))}));
   XLSX.utils.book_append_sheet(wb,w1,'Итоги');XLSX.utils.book_append_sheet(wb,w2,'Таблица');
+  const cr=[['№','Команда','Категория','Судья','Комментарий']];
+  ev.program.forEach((p,i)=>ids.forEach((id,k)=>{const c=(scores[id].comments||{})[p.id];if(c)cr.push([i+1,p.team,p.cat,jname(id,k),c])}));
+  if(cr.length>1){const w3=XLSX.utils.aoa_to_sheet(cr);w3['!cols']=[{wch:5},{wch:26},{wch:14},{wch:16},{wch:70}];XLSX.utils.book_append_sheet(wb,w3,'Комментарии')}
   XLSX.writeFile(wb,((ev.title||'Итоги').replace(/[\\\/:*?"<>|]/g,'').trim()||'Итоги')+'.xlsx');
 }
+function comHTML(){
+  const ids=judgeIds();
+  const cards=ev.program.map((p,i)=>{
+    const items=ids.map((id,k)=>({n:jname(id,k),c:(scores[id].comments||{})[p.id]})).filter(x=>x.c);
+    if(!items.length)return'';
+    return`<div class="card"><div class="top" style="margin-bottom:4px"><div><b>${i+1}. ${esc(p.team)}</b> <span class="mut">${esc(p.song)}</span></div><span class="chip">${esc(p.cat)}</span></div>
+    ${items.map(x=>`<div class="item"><div class="t"><span class="mut">${esc(x.n)}</span><div style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.c)}</div></div></div>`).join('')}</div>`}).join('');
+  return cards||'<div class="card mut">Комментариев пока нет. Судьи пишут их под оценками и отправляют вместе с баллами.</div>'}
 function resHTML(){
   const r=results();if(!r.length)return'<div class="card mut">Добавьте выступления в программу — итоги появятся здесь.</div>';
   const med=['🥇','🥈','🥉'];
@@ -192,10 +205,10 @@ function setHTML(){
   <div class="row" style="margin-top:12px"><button class="pri" data-act="ssave">Сохранить</button><button class="bad" data-act="reset">${resetArm==='s'?'Точно удалить все оценки?':'Сбросить все оценки'}</button><button class="bad" data-act="newroom">${resetArm==='r'?'Точно закрыть комнату?':'Закрыть комнату'}</button></div></div>`}
 function hostHTML(){
   const ids=judgeIds();const on=ids.filter(id=>conns.has(id)).length;
-  const tabs=[['prog','Программа'],['table','Таблица'],['res','Итоги'],['set','Настройки']];
+  const tabs=[['prog','Программа'],['table','Таблица'],['res','Итоги'],['com','Комментарии'],['set','Настройки']];
   return`<div class="card"><div class="top" style="margin:0"><div><div class="mut">Код комнаты — судьи вводят его на своих устройствах</div><div class="code">${esc(code)}</div></div><div class="mut">${status?esc(status):`<span class="dot"></span>судей онлайн: ${on} из ${ids.length}`}</div></div>
   ${ids.length?`<div class="mut" style="margin-top:6px">${ids.map((id,i)=>`<span style="margin-right:12px"><span class="dot ${conns.has(id)?'':'off'}"></span>${esc(jname(id,i))}</span>`).join('')}</div>`:''}</div>
-  <div class="tabs">${tabs.map(([k,n])=>`<button class="${tab===k?'on':''}" data-tab="${k}">${n}</button>`).join('')}</div>`+({prog:progHTML,table:tableHTML,res:resHTML,set:setHTML})[tab]()}
+  <div class="tabs">${tabs.map(([k,n])=>`<button class="${tab===k?'on':''}" data-tab="${k}">${n}</button>`).join('')}</div>`+({prog:progHTML,table:tableHTML,res:resHTML,com:comHTML,set:setHTML})[tab]()}
 
 /* ---- судья ---- */
 function startJudge(c,name){
@@ -212,7 +225,7 @@ function connect(){
   try{conn=peer.connect(PFX+code,{reliable:true})}catch(e){return}
   conn.on('open',()=>{status='';conn.send({t:'hello',key:myKey,name:myName});render()});
   conn.on('data',m=>{if(!m)return;
-    if(m.t==='ev'){ev=Object.assign(JSON.parse(JSON.stringify(DEF)),m.ev);if(m.marks)myMarks=m.marks;render()}
+    if(m.t==='ev'){ev=Object.assign(JSON.parse(JSON.stringify(DEF)),m.ev);if(m.marks)myMarks=m.marks;if(m.comments)myComments=m.comments;render()}
     else if(m.t==='ack'){const e=$('#j-msg');if(e)e.textContent='Отправлено ✓';const b=$('#j-send');if(b)b.textContent='Обновить оценки'}
     else if(m.t==='err')toast(m.m)});
   conn.on('close',()=>{status='Связь потеряна, переподключаемся…';render();setTimeout(()=>{if(role==='judge'&&peer&&!peer.destroyed)connect()},3000)});
@@ -224,9 +237,12 @@ function judgeHTML(){
   if(!p)return head+`<div class="card perf"><div class="mut">Ждём следующий номер…</div></div>`;
   const d=draft[p.id]||(draft[p.id]=Object.fromEntries(ev.criteria.map(c=>[c.id,(myMarks[p.id]&&myMarks[p.id][c.id]!=null)?String(myMarks[p.id][c.id]):''])));
   const sent=!!myMarks[p.id];
+  const cmt=draftC[p.id]!=null?draftC[p.id]:(myComments[p.id]||'');
   return head+`<div class="card perf"><span class="chip">${esc(p.cat)}</span><div class="tm">${esc(p.team)}</div><div class="sg">♪ ${esc(p.song)}</div>${fixLink(p.link)?`<div style="margin-top:10px">${linkHTML(p.link)}</div>`:''}</div>
   <div class="card">${ev.criteria.map(c=>`<div class="crit"><span>${esc(c.name)}</span><input class="sc" data-c="${c.id}" type="number" inputmode="decimal" min="0" max="${ev.max}" step="0.1" value="${esc(d[c.id])}" placeholder="0–${ev.max}"></div>`).join('')}
   <div class="crit"><b>Сумма</b><b id="j-sum">0</b></div>
+  <p class="mut" style="margin:12px 0 4px">Комментарий (необязательно, видит только ведущий)</p>
+  <textarea id="j-comment" maxlength="1000" style="min-height:84px" placeholder="Что понравилось, что улучшить…">${esc(cmt)}</textarea>
   <button class="pri big" id="j-send" data-act="send" style="margin-top:8px">${sent?'Обновить оценки':'Отправить оценки'}</button>
   <p class="mut" id="j-msg" style="margin:8px 0 0">${sent?'Ваши оценки по этому номеру отправлены.':''}</p></div>`}
 function judgeSum(){const p=cur();if(!p)return;const d=draft[p.id]||{};let s=0,ok=true;
@@ -234,7 +250,8 @@ function judgeSum(){const p=cur();if(!p)return;const d=draft[p.id]||{};let s=0,o
   const e=$('#j-sum');if(e)e.textContent=Math.round(s*100)/100;const b=$('#j-send');if(b)b.disabled=!ok||!conn||!conn.open}
 function send(){const p=cur();if(!p||!conn||!conn.open)return;const d=draft[p.id],m={};
   for(const c of ev.criteria){const v=parseFloat(String(d[c.id]).replace(',','.'));if(!isFinite(v))return;m[c.id]=Math.min(ev.max,Math.max(0,v))}
-  myMarks[p.id]=m;conn.send({t:'marks',perfId:p.id,marks:m,name:myName})}
+  myMarks[p.id]=m;const cmt=(draftC[p.id]!=null?draftC[p.id]:(myComments[p.id]||'')).trim();if(cmt)myComments[p.id]=cmt;else delete myComments[p.id];
+  conn.send({t:'marks',perfId:p.id,marks:m,name:myName,comment:cmt})}
 
 /* ---- старт-экран и отрисовка ---- */
 function landHTML(){
@@ -280,7 +297,7 @@ function act(a,id){
     const cats=$('#s-cats').value.split('\n').map(s=>s.trim()).filter(Boolean);if(cats.length)ev.categories=cats;
     ev.title=$('#s-title').value.trim()||DEF.title;ev.max=Math.max(1,parseFloat($('#s-max').value)||10);toast('Сохранено')}
   else if(a==='reset'){if(resetArm!=='s'){resetArm='s';_render();setTimeout(()=>{resetArm=false;if(tab==='set'&&role==='host')_render()},4000);return}
-    resetArm=false;for(const k in scores)scores[k].marks={};conns.forEach(c=>{try{c.send({t:'ev',ev,marks:{}})}catch(e){}});toast('Оценки удалены')}
+    resetArm=false;for(const k in scores){scores[k].marks={};scores[k].comments={}}conns.forEach(c=>{try{c.send({t:'ev',ev,marks:{},comments:{}})}catch(e){}});toast('Оценки удалены')}
   else if(a==='newroom'){if(resetArm!=='r'){resetArm='r';_render();setTimeout(()=>{resetArm=false;if(tab==='set'&&role==='host')_render()},4000);return}
     LS.del('jdg-host');location.reload();return}
   else return;
@@ -294,7 +311,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.classList.contains('sc')){const p=cur();if(p){draft[p.id][t.dataset.c]=t.value;judgeSum()}}
-  else if(t.id==='f-team')form.team=t.value;else if(t.id==='f-song')form.song=t.value;else if(t.id==='f-link')form.link=t.value;else if(t.id==='f-cat')form.cat=t.value});
+  else if(t.id==='j-comment'){const p=cur();if(p)draftC[p.id]=t.value}else if(t.id==='f-team')form.team=t.value;else if(t.id==='f-song')form.song=t.value;else if(t.id==='f-link')form.link=t.value;else if(t.id==='f-cat')form.cat=t.value});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   if(e.target.id==='f-team'||e.target.id==='f-song'||e.target.id==='f-link')act('add');
