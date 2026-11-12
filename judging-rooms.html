@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Судейство фестиваля</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--tx:#1d1d1b;--mut:#6b6a66;--bd:#e3e1db;--ac:#6d3fd1;--acx:#fff;--ok:#1f8a4c;--warn:#b7791f;--bad:#c0392b;--soft:#efeafb;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161517;--card:#201f22;--tx:#f1efe9;--mut:#a5a29b;--bd:#37353a;--ac:#a98bf0;--acx:#14101f;--ok:#4cc58a;--warn:#e0b04e;--bad:#ef7a6c;--soft:#2b2540;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161517;--card:#201f22;--tx:#f1efe9;--mut:#a5a29b;--bd:#37353a;--ac:#a98bf0;--acx:#14101f;--ok:#4cc58a;--warn:#e0b04e;--bad:#ef7a6c;--soft:#2b2540;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:0}
+h2{font-size:17px;margin:0 0 10px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px}
+button,.btn{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+button.on,button.pri{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+button:disabled{opacity:.45;cursor:default}
+button.sm{padding:4px 9px;font-size:14px}
+button.bad{color:var(--bad)}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px 10px;width:100%}
+textarea{min-height:110px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1 1 150px}
+.row>button{flex:0 0 auto}
+.mut{color:var(--mut);font-size:14px}
+.chip{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;background:var(--soft);color:var(--ac);font-weight:600}
+.st{font-size:12px;font-weight:600}
+.live{color:var(--ok)}.done{color:var(--mut)}.pend{color:var(--warn)}
+.item{display:flex;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--bd)}
+.item:first-child{border-top:0}
+.item .n{width:26px;color:var(--mut);text-align:right;flex:none}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;overflow-wrap:anywhere}
+.item.cur{background:var(--soft);margin:0 -8px;padding:9px 8px;border-radius:10px}
+.acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{color:var(--mut);font-weight:600}
+td.num,th.num{text-align:right}
+.perf{text-align:center;padding:18px 10px}
+.perf .tm{font-size:26px;font-weight:700;overflow-wrap:anywhere;margin:8px 0 2px}
+.perf .sg{color:var(--mut);font-size:17px;overflow-wrap:anywhere}
+.crit{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}
+.crit input{width:96px;text-align:center;font-size:20px;font-weight:600}
+.big{font-size:18px;padding:13px;width:100%}
+.medal{font-size:20px;width:30px;flex:none;text-align:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;z-index:5;max-width:90%}
+.hide{display:none}
+.code{font-size:34px;font-weight:800;letter-spacing:.18em;color:var(--ac)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:5px}
+.dot.off{background:var(--bd)}
+.land{max-width:420px;margin:6vh auto 0}
+.land button{width:100%;margin-top:8px;padding:13px;font-size:17px}
+.codein{text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:22px;font-weight:700}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><h1 id="ttl">Судейство</h1></div>
+  <div id="app"></div>
+</div>
+<div id="toast" class="toast hide"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uidn=()=>Math.random().toString(36).slice(2,9);
+const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const DEF={title:'Судейство фестиваля',max:10,
+  criteria:[{id:'c1',name:'Синхрон/заполняемость'},{id:'c2',name:'Техника'},{id:'c3',name:'Отыгрыш'},{id:'c4',name:'Визуал'},{id:'c5',name:'Общее впечатление'}],
+  categories:['Solo','DUO','BOYS','GIRLS','FREE ZONE'],program:[],currentId:null};
+let role=null,peer=null,code='',ev=JSON.parse(JSON.stringify(DEF)),scores={},conns=new Map(),status='',conn=null;
+let tab='prog',editId=null,form={team:'',song:'',cat:''},resetArm=false,draft={},myMarks={},myName=LS.get('jdg-name')||'',myKey=LS.get('jdg-key')||(()=>{const k=uidn()+uidn();LS.set('jdg-key',k);return k})();
+const PFX='jdg-fest-';
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.remove('hide');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.add('hide'),3500)}
+const newCode=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s};
+
+/* ---- подсчёты ---- */
+function perfTotals(p){let sum=0,n=0;const per={};
+  for(const id in scores){const m=scores[id].marks&&scores[id].marks[p.id];if(!m)continue;let s=0,k=0;
+    for(const c of ev.criteria){const v=parseFloat(m[c.id]);if(isFinite(v)){s+=Math.min(ev.max,Math.max(0,v));k++}}
+    if(k){per[id]=Math.round(s*100)/100;sum+=s;n++}}
+  return{sum:Math.round(sum*100)/100,n,per}}
+const judgeIds=()=>Object.keys(scores).sort((a,b)=>(scores[a].name||'').localeCompare(scores[b].name||''));
+const jname=(id,i)=>scores[id].name||('Судья '+(i+1));
+const allCats=()=>[...new Set([...ev.categories,...ev.program.map(p=>p.cat)])];
+function results(){return allCats().map(cat=>{
+  const list=ev.program.filter(p=>p.cat===cat).map(p=>({p,t:perfTotals(p)}));
+  const sc=list.filter(x=>x.t.n>0).sort((a,b)=>b.t.sum-a.t.sum);
+  sc.forEach((x,i)=>{x.place=i>0&&x.t.sum===sc[i-1].t.sum?sc[i-1].place:i+1});
+  return{cat,total:list.length,closed:list.filter(x=>x.p.done).length,sc}}).filter(r=>r.total>0)}
+
+/* ---- ведущий: сеть ---- */
+const saveHost=()=>LS.set('jdg-host',{code,ev,scores});
+function broadcast(){conns.forEach(c=>{try{c.send({t:'ev',ev})}catch(e){}})}
+function changed(){saveHost();broadcast();render()}
+function startHost(c,restore){
+  code=c;role='host';status='Создаём комнату…';render();
+  peer=new Peer(PFX+code);
+  peer.on('open',()=>{status='';saveHost();render()});
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){ if(restore){status='Комната ещё занята прошлой вкладкой, пробуем снова…';render();setTimeout(()=>{try{peer.destroy()}catch(x){}startHost(c,true)},4000)}else{try{peer.destroy()}catch(x){}startHost(newCode(),false)} }
+    else if(e.type==='network'||e.type==='server-error'||e.type==='socket-error'){status='Нет связи с сервером комнат. Проверьте интернет.';render()}
+  });
+  peer.on('connection',cn=>{
+    let key=null;
+    cn.on('data',m=>{
+      if(!m||typeof m!=='object')return;
+      if(m.t==='hello'&&typeof m.key==='string'){key=m.key.slice(0,40);conns.set(key,cn);
+        const j=scores[key]||(scores[key]={name:'',marks:{}});if(m.name)j.name=String(m.name).slice(0,30);
+        cn.send({t:'ev',ev,marks:j.marks});saveHost();render()}
+      else if(m.t==='marks'&&key){
+        const p=ev.program.find(x=>x.id===m.perfId);
+        if(!p||p.done){cn.send({t:'err',m:'Приём оценок по этому номеру закрыт'});return}
+        const mk={};for(const c of ev.criteria){const v=parseFloat(m.marks&&m.marks[c.id]);if(!isFinite(v)){cn.send({t:'err',m:'Заполните все критерии'});return}mk[c.id]=Math.min(ev.max,Math.max(0,v))}
+        const j=scores[key]||(scores[key]={name:'',marks:{}});if(m.name)j.name=String(m.name).slice(0,30);
+        j.marks[p.id]=mk;cn.send({t:'ack',perfId:p.id});saveHost();render()}
+    });
+    cn.on('close',()=>{if(key&&conns.get(key)===cn){conns.delete(key);render()}});
+  });
+}
+
+/* ---- ведущий: интерфейс ---- */
+function progHTML(){
+  const rows=ev.program.map((p,i)=>{
+    if(editId===p.id)return`<div class="item"><div class="n">${i+1}</div><div class="t"><div class="row"><input id="e-team" value="${esc(p.team)}"><input id="e-song" value="${esc(p.song)}"><select id="e-cat">${allCats().map(c=>`<option ${c===p.cat?'selected':''}>${esc(c)}</option>`).join('')}</select></div></div><div class="acts"><button class="sm pri" data-act="esave" data-id="${p.id}">ОК</button><button class="sm" data-act="ecancel">Отмена</button></div></div>`;
+    const live=p.id===ev.currentId;
+    const st=live?'<span class="st live">● идёт оценка</span>':p.done?'<span class="st done">✓ закрыт</span>':'<span class="st pend">ожидает</span>';
+    return`<div class="item ${live?'cur':''}"><div class="n">${i+1}</div><div class="t"><b>${esc(p.team)}</b><span class="mut">${esc(p.song)}</span> <span class="chip">${esc(p.cat)}</span> ${st}</div>
+    <div class="acts">${live?`<button class="sm" data-act="close" data-id="${p.id}">■ Закрыть</button>`:`<button class="sm" data-act="play" data-id="${p.id}">▶</button>`}
+    <button class="sm" data-act="up" data-id="${p.id}" ${i===0?'disabled':''}>↑</button><button class="sm" data-act="down" data-id="${p.id}" ${i===ev.program.length-1?'disabled':''}>↓</button>
+    <button class="sm" data-act="edit" data-id="${p.id}">✎</button><button class="sm bad" data-act="del" data-id="${p.id}">✕</button></div></div>`}).join('');
+  return`<div class="card"><h2>Добавить выступление</h2><div class="row"><input id="f-team" placeholder="Команда" value="${esc(form.team)}"><input id="f-song" placeholder="Песня" value="${esc(form.song)}"><select id="f-cat">${ev.categories.map(c=>`<option ${c===form.cat?'selected':''}>${esc(c)}</option>`).join('')}</select><button class="pri" data-act="add">Добавить</button></div></div>
+  <div class="card"><div class="top" style="margin-bottom:6px"><h2 style="margin:0">Программа (${ev.program.length})</h2>${ev.program.length?'<button class="pri" data-act="next">▶ Следующий номер</button>':''}</div>${rows||'<div class="mut">Пока пусто. Добавьте первое выступление выше.</div>'}</div>`}
+function tableHTML(){
+  const ids=judgeIds();if(!ev.program.length)return'<div class="card mut">Программа пуста.</div>';
+  const head=`<tr><th>№</th><th>Команда</th><th>Категория</th>${ids.map((id,i)=>`<th class="num">${esc(jname(id,i))}</th>`).join('')}<th class="num">Итог</th></tr>`;
+  const body=ev.program.map((p,i)=>{const t=perfTotals(p);
+    return`<tr><td>${i+1}</td><td><b>${esc(p.team)}</b></td><td>${esc(p.cat)}</td>${ids.map(id=>`<td class="num">${t.per[id]!=null?t.per[id]:'—'}</td>`).join('')}<td class="num"><b>${t.n?t.sum:'—'}</b></td></tr>`}).join('');
+  return`<div class="card"><div class="scroll"><table>${head}${body}</table></div><p class="mut" style="margin:10px 0 0">Итог — сумма баллов всех судей по всем критериям. Судей в комнате: ${ids.length}.</p></div>`}
+function resHTML(){
+  const r=results();if(!r.length)return'<div class="card mut">Добавьте выступления в программу — итоги появятся здесь.</div>';
+  const med=['🥇','🥈','🥉'];
+  return r.map(x=>{const top=x.sc.filter(s=>s.place<=3);const fin=x.closed===x.total&&x.sc.length===x.total;
+    return`<div class="card"><div class="top" style="margin-bottom:4px"><h2 style="margin:0">${esc(x.cat)}</h2><span class="mut">${fin?'итог окончательный':`оценено ${x.sc.length} из ${x.total} · предварительно`}</span></div>
+    ${top.length?top.map(s=>`<div class="item"><div class="medal">${med[s.place-1]}</div><div class="t"><b>${s.place} место — ${esc(s.p.team)}</b><span class="mut">${esc(s.p.song)} · судей: ${s.t.n}</span></div><b>${s.t.sum}</b></div>`).join(''):'<div class="mut">Оценок пока нет.</div>'}</div>`}).join('')}
+function setHTML(){
+  return`<div class="card"><h2>Настройки</h2>
+  <p class="mut" style="margin:0 0 4px">Название мероприятия</p><input id="s-title" value="${esc(ev.title)}">
+  <p class="mut" style="margin:12px 0 4px">Критерии (по одному в строке)</p><textarea id="s-crit">${esc(ev.criteria.map(c=>c.name).join('\n'))}</textarea>
+  <p class="mut" style="margin:12px 0 4px">Категории (по одной в строке)</p><textarea id="s-cats">${esc(ev.categories.join('\n'))}</textarea>
+  <p class="mut" style="margin:12px 0 4px">Максимальный балл за критерий</p><input id="s-max" type="number" min="1" max="100" value="${ev.max}">
+  <div class="row" style="margin-top:12px"><button class="pri" data-act="ssave">Сохранить</button><button class="bad" data-act="reset">${resetArm==='s'?'Точно удалить все оценки?':'Сбросить все оценки'}</button><button class="bad" data-act="newroom">${resetArm==='r'?'Точно закрыть комнату?':'Закрыть комнату'}</button></div></div>`}
+function hostHTML(){
+  const ids=judgeIds();const on=ids.filter(id=>conns.has(id)).length;
+  const tabs=[['prog','Программа'],['table','Таблица'],['res','Итоги'],['set','Настройки']];
+  return`<div class="card"><div class="top" style="margin:0"><div><div class="mut">Код комнаты — судьи вводят его на своих устройствах</div><div class="code">${esc(code)}</div></div><div class="mut">${status?esc(status):`<span class="dot"></span>судей онлайн: ${on} из ${ids.length}`}</div></div>
+  ${ids.length?`<div class="mut" style="margin-top:6px">${ids.map((id,i)=>`<span style="margin-right:12px"><span class="dot ${conns.has(id)?'':'off'}"></span>${esc(jname(id,i))}</span>`).join('')}</div>`:''}</div>
+  <div class="tabs">${tabs.map(([k,n])=>`<button class="${tab===k?'on':''}" data-tab="${k}">${n}</button>`).join('')}</div>`+({prog:progHTML,table:tableHTML,res:resHTML,set:setHTML})[tab]()}
+
+/* ---- судья ---- */
+function startJudge(c,name){
+  code=c.toUpperCase().trim();myName=name.trim();LS.set('jdg-name',myName);role='judge';status='Подключаемся…';render();
+  peer=new Peer();
+  peer.on('open',()=>connect());
+  peer.on('error',e=>{
+    if(e.type==='peer-unavailable'){status='Комната «'+code+'» не найдена. Проверьте код или попросите ведущего открыть страницу.';role=null;try{peer.destroy()}catch(x){}render()}
+    else{status='Нет связи, пробуем снова…';render();setTimeout(()=>{if(role==='judge'&&(!conn||!conn.open))connect()},3000)}
+  });
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
+}
+function connect(){
+  try{conn=peer.connect(PFX+code,{reliable:true})}catch(e){return}
+  conn.on('open',()=>{status='';conn.send({t:'hello',key:myKey,name:myName});render()});
+  conn.on('data',m=>{if(!m)return;
+    if(m.t==='ev'){ev=Object.assign(JSON.parse(JSON.stringify(DEF)),m.ev);if(m.marks)myMarks=m.marks;render()}
+    else if(m.t==='ack'){const e=$('#j-msg');if(e)e.textContent='Отправлено ✓';const b=$('#j-send');if(b)b.textContent='Обновить оценки'}
+    else if(m.t==='err')toast(m.m)});
+  conn.on('close',()=>{status='Связь потеряна, переподключаемся…';render();setTimeout(()=>{if(role==='judge'&&peer&&!peer.destroyed)connect()},3000)});
+}
+const cur=()=>ev.program.find(p=>p.id===ev.currentId);
+function judgeHTML(){
+  const p=cur();
+  const head=`<div class="card"><div class="top" style="margin:0"><div><span class="mut">Комната</span> <b style="letter-spacing:.15em">${esc(code)}</b> · ${esc(myName)}</div><div class="mut">${status?esc(status):'<span class="dot"></span>на связи'}</div></div></div>`;
+  if(!p)return head+`<div class="card perf"><div class="mut">Ждём следующий номер…</div></div>`;
+  const d=draft[p.id]||(draft[p.id]=Object.fromEntries(ev.criteria.map(c=>[c.id,(myMarks[p.id]&&myMarks[p.id][c.id]!=null)?String(myMarks[p.id][c.id]):''])));
+  const sent=!!myMarks[p.id];
+  return head+`<div class="card perf"><span class="chip">${esc(p.cat)}</span><div class="tm">${esc(p.team)}</div><div class="sg">♪ ${esc(p.song)}</div></div>
+  <div class="card">${ev.criteria.map(c=>`<div class="crit"><span>${esc(c.name)}</span><input class="sc" data-c="${c.id}" type="number" inputmode="decimal" min="0" max="${ev.max}" step="0.1" value="${esc(d[c.id])}" placeholder="0–${ev.max}"></div>`).join('')}
+  <div class="crit"><b>Сумма</b><b id="j-sum">0</b></div>
+  <button class="pri big" id="j-send" data-act="send" style="margin-top:8px">${sent?'Обновить оценки':'Отправить оценки'}</button>
+  <p class="mut" id="j-msg" style="margin:8px 0 0">${sent?'Ваши оценки по этому номеру отправлены.':''}</p></div>`}
+function judgeSum(){const p=cur();if(!p)return;const d=draft[p.id]||{};let s=0,ok=true;
+  for(const c of ev.criteria){const v=parseFloat(String(d[c.id]).replace(',','.'));if(!isFinite(v))ok=false;else s+=Math.min(ev.max,Math.max(0,v))}
+  const e=$('#j-sum');if(e)e.textContent=Math.round(s*100)/100;const b=$('#j-send');if(b)b.disabled=!ok||!conn||!conn.open}
+function send(){const p=cur();if(!p||!conn||!conn.open)return;const d=draft[p.id],m={};
+  for(const c of ev.criteria){const v=parseFloat(String(d[c.id]).replace(',','.'));if(!isFinite(v))return;m[c.id]=Math.min(ev.max,Math.max(0,v))}
+  myMarks[p.id]=m;conn.send({t:'marks',perfId:p.id,marks:m,name:myName})}
+
+/* ---- старт-экран и отрисовка ---- */
+function landHTML(){
+  const saved=LS.get('jdg-host');
+  return`<div class="land"><div class="card"><h2>Создать комнату</h2><p class="mut" style="margin-top:0">Для ведущего: составьте программу и получите код для судей.</p>
+  <button class="pri" data-act="create">Создать комнату</button>
+  ${saved?`<button data-act="resume">Продолжить комнату ${esc(saved.code)}</button>`:''}</div>
+  <div class="card"><h2>Войти по коду</h2><input class="codein" id="l-code" maxlength="5" placeholder="КОД" autocapitalize="characters" autocomplete="off"><input id="l-name" style="margin-top:8px" placeholder="Ваше имя (как в таблице)" value="${esc(myName)}" maxlength="30">
+  <button class="pri" data-act="join">Войти судьёй</button>${status?`<p class="mut" style="margin:10px 0 0;color:var(--bad)">${esc(status)}</p>`:''}</div></div>`}
+function render(){
+  if(typeof Peer==='undefined'){$('#app').innerHTML='<div class="card">Не загрузилась библиотека связи. Откройте файл при подключении к интернету.</div>';return}
+  const a=document.activeElement;if(a&&a.closest&&a.closest('#app')&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.dataset.keep!==undefined)return;
+  $('#ttl').textContent=role?ev.title:'Судейство';
+  $('#app').innerHTML=role==='host'?hostHTML():role==='judge'?judgeHTML():landHTML();
+  if(role==='judge')judgeSum();
+}
+const busyInput=()=>{const a=document.activeElement;return a&&a.closest&&a.closest('#app')&&/INPUT|TEXTAREA/.test(a.tagName)};
+const _render=render;render=function(){if(role&&busyInput()&&!(role==='judge'&&false)){return}_render()};
+
+function act(a,id){
+  if(a==='create'){ev=JSON.parse(JSON.stringify(DEF));scores={};form={team:'',song:'',cat:ev.categories[0]};startHost(newCode(),false);return}
+  if(a==='resume'){const s=LS.get('jdg-host');if(!s)return;ev=Object.assign(JSON.parse(JSON.stringify(DEF)),s.ev);scores=s.scores||{};form.cat=ev.categories[0];startHost(s.code,true);return}
+  if(a==='join'){const c=$('#l-code').value.trim(),n=$('#l-name').value.trim();if(c.length<4){status='Введите код комнаты';render();return}if(!n){status='Введите имя';render();return}status='';startJudge(c,n);return}
+  const i=ev.program.findIndex(p=>p.id===id);
+  if(a==='add'){const team=$('#f-team').value.trim(),song=$('#f-song').value.trim(),cat=$('#f-cat').value;if(!team){toast('Введите название команды');return}
+    ev.program.push({id:uidn(),team,song,cat});form={team:'',song:'',cat}}
+  else if(a==='del'){ev.program.splice(i,1);if(ev.currentId===id)ev.currentId=null}
+  else if(a==='up'&&i>0){[ev.program[i-1],ev.program[i]]=[ev.program[i],ev.program[i-1]]}
+  else if(a==='down'&&i<ev.program.length-1){[ev.program[i+1],ev.program[i]]=[ev.program[i],ev.program[i+1]]}
+  else if(a==='play'){delete ev.program[i].done;ev.currentId=id}
+  else if(a==='close'){ev.program[i].done=true;ev.currentId=null}
+  else if(a==='next'){if(ev.currentId){const c=ev.program.find(p=>p.id===ev.currentId);if(c)c.done=true}
+    const nx=ev.program.find(p=>!p.done);ev.currentId=nx?nx.id:null;if(!nx)toast('Все номера пройдены')}
+  else if(a==='edit'){editId=id;_render();return}
+  else if(a==='ecancel'){editId=null;_render();return}
+  else if(a==='esave'){const p=ev.program[i];p.team=$('#e-team').value.trim()||p.team;p.song=$('#e-song').value.trim();p.cat=$('#e-cat').value;editId=null}
+  else if(a==='ssave'){const old=ev.criteria,names=$('#s-crit').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(!names.length){toast('Нужен хотя бы один критерий');return}
+    ev.criteria=names.map((n,k)=>({id:old[k]?old[k].id:'c'+uidn(),name:n}));
+    const cats=$('#s-cats').value.split('\n').map(s=>s.trim()).filter(Boolean);if(cats.length)ev.categories=cats;
+    ev.title=$('#s-title').value.trim()||DEF.title;ev.max=Math.max(1,parseFloat($('#s-max').value)||10);toast('Сохранено')}
+  else if(a==='reset'){if(resetArm!=='s'){resetArm='s';_render();setTimeout(()=>{resetArm=false;if(tab==='set'&&role==='host')_render()},4000);return}
+    resetArm=false;for(const k in scores)scores[k].marks={};conns.forEach(c=>{try{c.send({t:'ev',ev,marks:{}})}catch(e){}});toast('Оценки удалены')}
+  else if(a==='newroom'){if(resetArm!=='r'){resetArm='r';_render();setTimeout(()=>{resetArm=false;if(tab==='set'&&role==='host')_render()},4000);return}
+    LS.del('jdg-host');location.reload();return}
+  else return;
+  changed();_render();
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act],[data-tab]');if(!t)return;
+  if(t.dataset.tab){tab=t.dataset.tab;editId=null;_render()}
+  else if(t.dataset.act==='send')send();
+  else act(t.dataset.act,t.dataset.id)});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.classList.contains('sc')){const p=cur();if(p){draft[p.id][t.dataset.c]=t.value;judgeSum()}}
+  else if(t.id==='f-team')form.team=t.value;else if(t.id==='f-song')form.song=t.value;else if(t.id==='f-cat')form.cat=t.value});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  if(e.target.id==='f-team'||e.target.id==='f-song')act('add');
+  else if(e.target.id==='l-code'||e.target.id==='l-name')act('join')});
+document.addEventListener('focusout',()=>{if(role)setTimeout(()=>{if(!busyInput())_render()},120)});
+window.addEventListener('load',()=>_render());
+</script>
+</body>
+</html>
