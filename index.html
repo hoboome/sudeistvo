@@ -266,6 +266,119 @@ document.addEventListener('keydown',e=>{
   else if(e.target.id==='l-code'||e.target.id==='l-name')act('join')});
 document.addEventListener('focusout',()=>{if(role)setTimeout(()=>{if(!busyInput())_render()},120)});
 window.addEventListener('load',()=>_render());
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  var KEYS = {
+    team: ['название', 'команда', 'название команды', 'team', 'name'],
+    song: ['песня', 'трек', 'song', 'track'],
+    cat:  ['номинация', 'категория', 'category', 'nomination']
+  };
+  var norm = function (v) { return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' '); };
+  var clean = function (v) { return String(v == null ? '' : v).trim(); };
+  var findCol = function (row, list) {
+    for (var i = 0; i < row.length; i++) if (list.indexOf(norm(row[i])) !== -1) return i;
+    return -1;
+  };
+
+  function parseSheets(wb) {
+    var out = [];
+    wb.SheetNames.forEach(function (name) {
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '', blankrows: false });
+      for (var h = 0; h < Math.min(rows.length, 10); h++) {
+        var t = findCol(rows[h], KEYS.team), s = findCol(rows[h], KEYS.song), c = findCol(rows[h], KEYS.cat);
+        if (t !== -1 && s !== -1) {
+          for (var r = h + 1; r < rows.length; r++) {
+            var team = clean(rows[r][t]);
+            if (team) out.push({ team: team, song: clean(rows[r][s]), cat: c !== -1 ? clean(rows[r][c]) : '' });
+          }
+          break;
+        }
+      }
+    });
+    if (!out.length && wb.SheetNames.length) { // запасной вариант: столбцы A, B, C без заголовков
+      var rows0 = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', blankrows: false });
+      var start = rows0.length && /команд|назван|team|песн|song/.test(norm(rows0[0].join(' '))) ? 1 : 0;
+      for (var i = start; i < rows0.length; i++) {
+        var tm = clean(rows0[i][0]);
+        if (tm) out.push({ team: tm, song: clean(rows0[i][1]), cat: clean(rows0[i][2]) });
+      }
+    }
+    return out;
+  }
+
+  function importRows(list) {
+    var added = 0, skipped = 0;
+    list.forEach(function (x) {
+      var cat = x.cat;
+      if (!cat) cat = ev.categories[0] || 'Без категории';
+      var known = allCats().filter(function (c) { return norm(c) === norm(cat); })[0];
+      if (known) cat = known; else ev.categories.push(cat);
+      var dup = ev.program.some(function (p) {
+        return norm(p.team) === norm(x.team) && norm(p.song) === norm(x.song) && norm(p.cat) === norm(cat);
+      });
+      if (dup) { skipped++; return; }
+      ev.program.push({ id: uidn(), team: x.team, song: x.song, cat: cat });
+      added++;
+    });
+    return { added: added, skipped: skipped };
+  }
+
+  function handleFile(file) {
+    if (typeof XLSX === 'undefined') { toast('Не загрузилась библиотека Excel. Проверьте интернет.'); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var wb = XLSX.read(fr.result, { type: 'array' });
+        var list = parseSheets(wb);
+        if (!list.length) { toast('Не нашла выступления. Нужны столбцы: Название, Песня, Номинация.'); return; }
+        var r = importRows(list);
+        changed(); _render();
+        toast('Добавлено: ' + r.added + (r.skipped ? ', пропущено повторов: ' + r.skipped : ''));
+      } catch (e) { toast('Не удалось прочитать файл: ' + (e.message || e)); }
+    };
+    fr.readAsArrayBuffer(file);
+  }
+
+  function downloadTemplate() {
+    if (typeof XLSX === 'undefined') return;
+    var ws = XLSX.utils.aoa_to_sheet([
+      ['Название', 'Песня', 'Номинация'],
+      ['Пример команды', 'Артист — Песня', 'GIRLS']
+    ]);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Программа');
+    XLSX.writeFile(wb, 'программа-шаблон.xlsx');
+  }
+
+  function addCard() {
+    if (typeof role === 'undefined' || role !== 'host') return;
+    if (document.getElementById('imp-card')) return;
+    var f = document.getElementById('f-team');
+    if (!f) return;
+    var anchor = f.closest('.card');
+    if (!anchor) return;
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'imp-card';
+    card.innerHTML =
+      '<h2>Загрузить программу из Excel</h2>' +
+      '<p class="mut" style="margin:0 0 8px">Столбцы: Название, Песня, Номинация. Новые номинации добавятся сами, повторы пропускаются.</p>' +
+      '<div class="row"><button class="pri" id="imp-btn">Выбрать файл .xlsx</button>' +
+      '<button id="imp-tpl">Скачать шаблон</button></div>' +
+      '<input type="file" id="imp-file" accept=".xlsx,.xls,.csv" class="hide">';
+    anchor.parentNode.insertBefore(card, anchor);
+    var inp = card.querySelector('#imp-file');
+    card.querySelector('#imp-btn').onclick = function () { inp.click(); };
+    card.querySelector('#imp-tpl').onclick = downloadTemplate;
+    inp.onchange = function () { if (inp.files && inp.files[0]) handleFile(inp.files[0]); inp.value = ''; };
+  }
+
+  var app = document.getElementById('app');
+  if (app) new MutationObserver(addCard).observe(app, { childList: true });
+  addCard();
+})();
 </script>
+
 </body>
 </html>
