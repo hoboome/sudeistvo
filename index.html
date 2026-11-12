@@ -75,7 +75,7 @@ const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return 
 const DEF={title:'Судейство фестиваля',max:10,
   criteria:[{id:'c1',name:'Синхрон/заполняемость'},{id:'c2',name:'Техника'},{id:'c3',name:'Отыгрыш'},{id:'c4',name:'Визуал'},{id:'c5',name:'Общее впечатление'}],
   categories:['Solo','DUO','BOYS','GIRLS','FREE ZONE'],program:[],currentId:null};
-const UI=LS.get('jdg-ui')||{};let showJ=UI.showJ!==false,detJ=!!UI.detJ;const saveUI=()=>LS.set('jdg-ui',{showJ,detJ});
+const UI=LS.get('jdg-ui')||{};let showJ=UI.showJ!==false,detJ=!!UI.detJ,showC=UI.showC!==false;const saveUI=()=>LS.set('jdg-ui',{showJ,detJ,showC});
 const fixLink=v=>{v=String(v||'').trim();if(!v)return'';if(!/^https?:\/\//i.test(v)){if(/^[a-z][a-z0-9+.-]*:/i.test(v))return'';v='https://'+v}return v.slice(0,500)};
 const linkHTML=l=>{l=fixLink(l);return l?`<a class="chip" href="${esc(l)}" target="_blank" rel="noopener noreferrer">🔗 ссылка</a>`:''};
 let role=null,peer=null,code='',ev=JSON.parse(JSON.stringify(DEF)),scores={},conns=new Map(),status='',conn=null;
@@ -144,38 +144,41 @@ function progHTML(){
     <button class="sm" data-act="edit" data-id="${p.id}">✎</button><button class="sm bad" data-act="del" data-id="${p.id}">✕</button></div></div>`}).join('');
   return`<div class="card"><h2>Добавить выступление</h2><div class="row"><input id="f-team" placeholder="Команда" value="${esc(form.team)}"><input id="f-song" placeholder="Песня" value="${esc(form.song)}"><input id="f-link" placeholder="Ссылка (необязательно)" value="${esc(form.link||'')}"><select id="f-cat">${ev.categories.map(c=>`<option ${c===form.cat?'selected':''}>${esc(c)}</option>`).join('')}</select><button class="pri" data-act="add">Добавить</button></div></div>
   <div class="card"><div class="top" style="margin-bottom:6px"><h2 style="margin:0">Программа (${ev.program.length})</h2>${ev.program.length?'<button class="pri" data-act="next">▶ Следующий номер</button>':''}</div>${rows||'<div class="mut">Пока пусто. Добавьте первое выступление выше.</div>'}</div>`}
+const commentsOf=p=>judgeIds().map((id,k)=>({n:jname(id,k),c:(scores[id].comments||{})[p.id]})).filter(x=>x.c);
+function ccell(p){const it=commentsOf(p);
+  return`<td style="white-space:normal;min-width:220px;max-width:380px;overflow-wrap:anywhere">${it.map(x=>`<div style="white-space:pre-wrap">${showJ?`<span class="mut">${esc(x.n)}:</span> `:''}${esc(x.c)}</div>`).join('')||'—'}</td>`}
 function tableHTML(){
   const ids=judgeIds(),cs=ev.criteria,det=showJ&&detJ;
   if(!ev.program.length)return'<div class="card mut">Программа пуста.</div>';
-  const ctl=`<div class="row" style="margin-bottom:10px"><button class="${showJ?'on':''}" data-act="tj">${showJ?'Скрыть оценки судей':'Показать оценки судей'}</button>${showJ?`<button class="${detJ?'on':''}" data-act="td">${detJ?'Только суммы судей':'По критериям'}</button>`:''}<button class="pri" data-act="xls">Скачать Excel</button></div>`;
+  const ctl=`<div class="row" style="margin-bottom:10px"><button class="${showJ?'on':''}" data-act="tj">${showJ?'Скрыть оценки судей':'Показать оценки судей'}</button>${showJ?`<button class="${detJ?'on':''}" data-act="td">${detJ?'Только суммы судей':'По критериям'}</button>`:''}<button class="${showC?'on':''}" data-act="tc">${showC?'Скрыть комментарии':'Показать комментарии'}</button><button class="pri" data-act="xls">Скачать Excel</button></div>`;
   const th0='<th>№</th><th>Команда</th><th>Категория</th>';
   let head;
-  if(!showJ)head=`<tr>${th0}<th class="num">Итог</th></tr>`;
-  else if(!det)head=`<tr>${th0}${ids.map((id,i)=>`<th class="num">${esc(jname(id,i))}</th>`).join('')}<th class="num">Итог</th></tr>`;
-  else head=`<tr><th rowspan="2">№</th><th rowspan="2">Команда</th><th rowspan="2">Категория</th>${ids.map((id,i)=>`<th colspan="${cs.length+1}" style="text-align:center">${esc(jname(id,i))}</th>`).join('')}<th rowspan="2" class="num">Итог</th></tr><tr>${ids.map(()=>cs.map(c=>`<th class="num">${esc(c.name)}</th>`).join('')+'<th class="num">Σ</th>').join('')}</tr>`;
+  if(!showJ)head=`<tr>${th0}<th class="num">Итог</th>${showC?'<th>Комментарии</th>':''}</tr>`;
+  else if(!det)head=`<tr>${th0}${ids.map((id,i)=>`<th class="num">${esc(jname(id,i))}</th>`).join('')}<th class="num">Итог</th>${showC?'<th>Комментарии</th>':''}</tr>`;
+  else head=`<tr><th rowspan="2">№</th><th rowspan="2">Команда</th><th rowspan="2">Категория</th>${ids.map((id,i)=>`<th colspan="${cs.length+1}" style="text-align:center">${esc(jname(id,i))}</th>`).join('')}<th rowspan="2" class="num">Итог</th>${showC?'<th rowspan="2">Комментарии</th>':''}</tr><tr>${ids.map(()=>cs.map(c=>`<th class="num">${esc(c.name)}</th>`).join('')+'<th class="num">Σ</th>').join('')}</tr>`;
   const body=ev.program.map((p,i)=>{const t=perfTotals(p);let cells='';
     if(showJ)cells=ids.map(id=>{
       const sm=t.per[id]!=null?t.per[id]:'—';
       if(!det)return`<td class="num">${sm}</td>`;
       const m=(scores[id].marks||{})[p.id]||{};
       return cs.map(c=>`<td class="num">${m[c.id]!=null?m[c.id]:'—'}</td>`).join('')+`<td class="num"><b>${sm}</b></td>`}).join('');
-    return`<tr><td>${i+1}</td><td><b>${esc(p.team)}</b></td><td>${esc(p.cat)}</td>${cells}<td class="num"><b>${t.n?t.sum:'—'}</b></td></tr>`}).join('');
+    return`<tr><td>${i+1}</td><td><b>${esc(p.team)}</b></td><td>${esc(p.cat)}</td>${cells}<td class="num"><b>${t.n?t.sum:'—'}</b></td>${showC?ccell(p):''}</tr>`}).join('');
   return`<div class="card">${ctl}<div class="scroll"><table>${head}${body}</table></div><p class="mut" style="margin:10px 0 0">Итог — сумма баллов всех судей по всем критериям. Судей в комнате: ${ids.length}. В файл Excel попадает то, что сейчас показано в таблице; лист «Итоги» с местами 1–3 есть всегда.</p></div>`}
 function exportXls(){
   if(typeof XLSX==='undefined'){toast('Не загрузилась библиотека Excel. Проверьте интернет.');return}
   const ids=judgeIds(),cs=ev.criteria,det=showJ&&detJ;
   const hdr=['№','Команда','Песня','Категория','Ссылка'];
   if(showJ)ids.forEach((id,i)=>{const n=jname(id,i);if(det)cs.forEach(c=>hdr.push(n+' · '+c.name));hdr.push(det?n+' · сумма':n)});
-  hdr.push('Итог','Место в категории');
+  hdr.push('Итог','Место в категории');if(showC)hdr.push('Комментарии');
   const res=results(),place={};res.forEach(r=>r.sc.forEach(x=>{place[x.p.id]=x.place}));
   const rows=ev.program.map((p,i)=>{const t=perfTotals(p);const r=[i+1,p.team,p.song||'',p.cat,fixLink(p.link)];
     if(showJ)ids.forEach(id=>{const m=(scores[id].marks||{})[p.id]||{};if(det)cs.forEach(c=>r.push(m[c.id]!=null?Number(m[c.id]):''));r.push(t.per[id]!=null?t.per[id]:'')});
-    r.push(t.n?t.sum:'',place[p.id]||'');return r});
+    r.push(t.n?t.sum:'',place[p.id]||'');if(showC)r.push(commentsOf(p).map(x=>showJ?x.n+': '+x.c:x.c).join('\n'));return r});
   const top=[['Категория','Место','Команда','Песня','Баллы']];
   res.forEach(r=>r.sc.filter(x=>x.place<=3).forEach(x=>top.push([r.cat,x.place,x.p.team,x.p.song||'',x.t.sum])));
   const wb=XLSX.utils.book_new();
   const w1=XLSX.utils.aoa_to_sheet(top);w1['!cols']=[{wch:16},{wch:7},{wch:28},{wch:30},{wch:9}];
-  const w2=XLSX.utils.aoa_to_sheet([hdr,...rows]);w2['!cols']=hdr.map((h,k)=>({wch:k===1||k===2?28:k===4?24:Math.max(8,Math.min(22,String(h).length+2))}));
+  const w2=XLSX.utils.aoa_to_sheet([hdr,...rows]);w2['!cols']=hdr.map((h,k)=>({wch:k===1||k===2?28:k===4?24:(showC&&k===hdr.length-1)?60:Math.max(8,Math.min(22,String(h).length+2))}));
   XLSX.utils.book_append_sheet(wb,w1,'Итоги');XLSX.utils.book_append_sheet(wb,w2,'Таблица');
   const cr=[['№','Команда','Категория','Судья','Комментарий']];
   ev.program.forEach((p,i)=>ids.forEach((id,k)=>{const c=(scores[id].comments||{})[p.id];if(c)cr.push([i+1,p.team,p.cat,jname(id,k),c])}));
@@ -276,6 +279,7 @@ function act(a,id){
   if(a==='resume'){const s=LS.get('jdg-host');if(!s)return;ev=Object.assign(JSON.parse(JSON.stringify(DEF)),s.ev);scores=s.scores||{};form.cat=ev.categories[0];startHost(s.code,true);return}
   if(a==='join'){const c=$('#l-code').value.trim(),n=$('#l-name').value.trim();if(c.length<4){status='Введите код комнаты';render();return}if(!n){status='Введите имя';render();return}status='';startJudge(c,n);return}
   if(a==='tj'){showJ=!showJ;saveUI();_render();return}
+  if(a==='tc'){showC=!showC;saveUI();_render();return}
   if(a==='td'){detJ=!detJ;saveUI();_render();return}
   if(a==='xls'){exportXls();return}
   const i=ev.program.findIndex(p=>p.id===id);
