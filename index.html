@@ -266,6 +266,7 @@ document.addEventListener('keydown',e=>{
   else if(e.target.id==='l-code'||e.target.id==='l-name')act('join')});
 document.addEventListener('focusout',()=>{if(role)setTimeout(()=>{if(!busyInput())_render()},120)});
 window.addEventListener('load',()=>_render());
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function () {
@@ -379,6 +380,5 @@ window.addEventListener('load',()=>_render());
   addCard();
 })();
 </script>
-
 </body>
 </html>
